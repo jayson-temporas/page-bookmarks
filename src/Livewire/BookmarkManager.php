@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace JaysonTemporas\PageBookmarks\Livewire;
 
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Forms\Components\Hidden;
@@ -12,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use JaysonTemporas\PageBookmarks\Models\Bookmark;
@@ -23,9 +27,10 @@ use Livewire\Component;
 /**
  * @property Schema $form
  */
-class BookmarkManager extends Component implements HasForms
+class BookmarkManager extends Component implements HasForms, HasActions
 {
     use InteractsWithForms;
+    use InteractsWithActions;
 
     /** @var array<string, mixed> */
     public ?array $data = [];
@@ -91,6 +96,10 @@ class BookmarkManager extends Component implements HasForms
 
                         return $user->bookmarkFolders()->create($data)->getKey();
                     })
+                    ->createOptionAction(
+                        fn (Action $action) => $action->modalWidth(Width::Small)
+                            ->after(fn () => $this->dispatch('refreshBookmarks')),
+                    )
                     ->nullable(),
 
                 TextInput::make('display_url')
