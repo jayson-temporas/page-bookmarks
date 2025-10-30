@@ -8,7 +8,7 @@
     <x-filament::modal
         id="bookmark-items-modal"
         width="md"
-        heading="My Bookmarks"
+        :heading="__('page-bookmarks::translation.my_bookmarks')"
         :slide-over="config('page-bookmarks.modal.view_bookmarks') === 'slideOver' ? true : false"
         x-on:open-modal.window="if ($event.detail.id === 'bookmark-items-modal') $wire.$refresh()"
         x-on:refreshBookmarks.window="$wire.$refresh()"
@@ -24,7 +24,7 @@
                 <input
                     type="search"
                     class="w-full p-2 text-sm text-gray-900 border border-gray-300 rounded-lg ps-10 bg-gray-50 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    placeholder="Search bookmarks"
+                    placeholder="{{ __('page-bookmarks::translation.search_bookmarks') }}"
                     x-data
                     x-on:input.debounce.300ms="
                         const searchTerm = $event.target.value.toLowerCase();
@@ -153,9 +153,9 @@
                         icon="{{ $this->getIcons()['empty_state'] }}"
                         class="w-12 h-12 mx-auto text-gray-400"
                     />
-                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No bookmarks found</h3>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('page-bookmarks::translation.no_bookmarks_found') }}</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Click the bookmark plus icon to save your first bookmark.
+                        {{ __('page-bookmarks::translation.click_the_bookmark_plus_icon_to_save_your_first_bookmark') }}.
                     </p>
                 </div>
             @endforelse

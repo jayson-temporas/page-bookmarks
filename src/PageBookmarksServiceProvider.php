@@ -18,11 +18,12 @@ class PageBookmarksServiceProvider extends PackageServiceProvider
     public function configurePackage(Package $package): void
     {
         $package
-            ->name(static::$name)
+            ->name('page-bookmarks')
             ->hasConfigFile()
             ->hasMigration('create_bookmarks_table')
             ->hasViews('page-bookmarks')
             // Publishing groups
+            ->hasTranslations()
             ->hasInstallCommand(function ($command) {
                 $command
                     ->publishConfigFile()

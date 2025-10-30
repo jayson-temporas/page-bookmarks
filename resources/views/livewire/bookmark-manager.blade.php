@@ -25,7 +25,7 @@
         id="bookmark-form-modal"
         width="md"
         :slide-over="config('page-bookmarks.modal.add_bookmark') === 'slideOver' ? true : false"
-        heading="Add Bookmark"
+        :heading="__('page-bookmarks::translation.add_bookmark')"
     >
         <form wire:submit.prevent="save">
             {{ $this->form }}

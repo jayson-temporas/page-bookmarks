@@ -42,7 +42,7 @@ class BookmarkViewer extends Component
             }
 
             // Fallback to the old folder field for backward compatibility
-            return $bookmark->folder ?: 'Uncategorized';
+            return $bookmark->folder ?: __('page-bookmarks::translation.uncategorized');
         });
 
         /** @var Collection<string, Collection<int, Bookmark>> */
@@ -70,7 +70,7 @@ class BookmarkViewer extends Component
 
             Notification::make()
                 ->duration(2000)
-                ->title('Bookmark deleted successfully')
+                ->title(__('page-bookmarks::translation.bookmark_deleted_successfully'))
                 ->success()
                 ->send();
 

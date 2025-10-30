@@ -75,7 +75,7 @@ class BookmarkManager extends Component implements HasForms
                 Hidden::make('url'),
 
                 Select::make('bookmark_folder_id')
-                    ->label('Folder')
+                    ->label(__('page-bookmarks::translation.folder'))
                     ->options(BookmarkFolder::query()->where('user_id', auth()->id())->pluck('name', 'id'))
                     ->createOptionForm([
                         TextInput::make('name')
@@ -136,7 +136,7 @@ class BookmarkManager extends Component implements HasForms
             }
 
             // Fallback to the old folder field for backward compatibility
-            return $bookmark->folder ?: 'Uncategorized';
+            return $bookmark->folder ?: __('page-bookmarks::translation.uncategorized');
         });
 
         /** @var Collection<string, Collection<int, Bookmark>> */
@@ -164,7 +164,7 @@ class BookmarkManager extends Component implements HasForms
 
             Notification::make()
                 ->duration(1200)
-                ->title('Bookmark deleted successfully')
+                ->title(__('page-bookmarks::translation.bookmark_deleted_successfully'))
                 ->success()
                 ->send();
         }
@@ -233,15 +233,15 @@ class BookmarkManager extends Component implements HasForms
             // Determine if it's a duplicate name, URL, or both
             $duplicateField = '';
             if ($existingBookmark->name === $name && $existingBookmark->url === $url) {
-                $duplicateField = 'bookmark with this name and URL';
+                $duplicateField = __('page-bookmarks::translation.bookmark_with_this_name_and_url');
             } elseif ($existingBookmark->name === $name) {
-                $duplicateField = 'bookmark with this name';
+                $duplicateField = __('page-bookmarks::translation.bookmark_with_this_name');
             } else {
-                $duplicateField = 'bookmark for this URL';
+                $duplicateField = __('page-bookmarks::translation.bookmark_for_this_url');
             }
 
             Notification::make()
-                ->title('You already have a '.$duplicateField)
+                ->title(__('page-bookmarks::translation.you_already_have_a_duplicate', ['duplicate' => $duplicateField]))
                 ->warning()
                 ->send();
 
@@ -264,7 +264,7 @@ class BookmarkManager extends Component implements HasForms
         $this->dispatch('refreshBookmarks');
 
         Notification::make()
-            ->title('Bookmark saved successfully')
+            ->title(__('page-bookmarks::translation.bookmark_saved_successfully'))
             ->success()
             ->send();
     }
