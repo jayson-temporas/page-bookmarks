@@ -17,6 +17,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use JaysonTemporas\PageBookmarks\Models\Bookmark;
 use JaysonTemporas\PageBookmarks\Models\BookmarkFolder;
@@ -27,25 +28,11 @@ use Livewire\Component;
 /**
  * @property Schema $form
  */
+#[On('refreshBookmarks')]
 class BookmarkManager extends Component implements HasForms, HasActions
 {
     use InteractsWithForms;
     use InteractsWithActions;
-
-    /** @var array<string, mixed> */
-    public ?array $data = [];
-
-    public function mount(): void
-    {
-        // Get current URL from the request
-        $currentUrl = request()->url();
-
-        // Initialize data with the current URL
-        $this->data = [
-            'url' => $currentUrl,
-            'display_url' => $currentUrl,
-        ];
-    }
 
     /**
      * Get available bookmark folders for the current user
@@ -62,61 +49,11 @@ class BookmarkManager extends Component implements HasForms, HasActions
         }
 
         /** @var array<int, string> $folders */
-        $folders = BookmarkFolder::query()->where('user_id', $user->id)
+        $folders = BookmarkFolder::query()->whereBelongsTo($user)
             ->pluck('name', 'id')
             ->toArray();
 
         return $folders;
-    }
-
-    public function form(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-
-                Hidden::make('url'),
-
-                Select::make('bookmark_folder_id')
-                    ->label(__('page-bookmarks::translation.folder'))
-                    ->options(BookmarkFolder::query()->where('user_id', auth()->id())->pluck('name', 'id'))
-                    ->createOptionForm([
-                        TextInput::make('name')
-                            ->required()
-                            ->maxLength(255),
-                    ])
-                    ->createOptionUsing(function (array $data, Set $set) {
-                        $user = auth()->user();
-
-                        if ($user === null) {
-                            return null;
-                        }
-
-                        return $user->bookmarkFolders()->create($data)->getKey();
-                    })
-                    ->createOptionAction(
-                        fn (Action $action) => $action->modalWidth(Width::Small)
-                            ->after(fn () => $this->dispatch('refreshBookmarks')),
-                    )
-                    ->nullable(),
-
-                TextInput::make('display_url')
-                    ->label('URL')
-                    ->disabled()
-                    ->dehydrated(false),
-            ])
-            ->model(Bookmark::class)
-            ->statePath('data');
-    }
-
-    /**
-     * Set the bookmark name from JavaScript
-     */
-    public function setBookmarkName(string $name): void
-    {
-        $this->data['name'] = $name;
     }
 
     /**
@@ -133,7 +70,7 @@ class BookmarkManager extends Component implements HasForms, HasActions
             return collect();
         }
 
-        $bookmarks = Bookmark::query()->where('user_id', $user->id)
+        $bookmarks = Bookmark::whereBelongsTo($user)
             ->with('folder')
             ->orderBy('name')
             ->get();
@@ -148,12 +85,12 @@ class BookmarkManager extends Component implements HasForms, HasActions
             return $bookmark->folder ?: __('page-bookmarks::translation.uncategorized');
         });
 
-        /** @var Collection<string, Collection<int, Bookmark>> */
+        /** @var Collection<string, Collection<int, Bookmark>> $result */
         $result = collect();
 
         // Convert to the right Collection types for PHPStan
         foreach ($grouped as $folder => $items) {
-            /** @var Collection<int, Bookmark> */
+            /** @var Collection<int, Bookmark> $bookmarkCollection */
             $bookmarkCollection = collect($items);
             $result->put($folder, $bookmarkCollection);
         }
@@ -166,7 +103,7 @@ class BookmarkManager extends Component implements HasForms, HasActions
      */
     public function deleteBookmark(int $id): void
     {
-        $bookmark = Bookmark::query()->where('user_id', auth()->id())->find($id);
+        $bookmark = Bookmark::whereBelongsTo(auth()->user())->find($id);
 
         if ($bookmark) {
             $bookmark->delete();
@@ -177,15 +114,6 @@ class BookmarkManager extends Component implements HasForms, HasActions
                 ->success()
                 ->send();
         }
-    }
-
-    /**
-     * Refresh bookmarks from event
-     */
-    #[On('refreshBookmarks')]
-    public function refreshBookmarks(): void
-    {
-        // This will refresh the computed property
     }
 
     /**
@@ -212,69 +140,99 @@ class BookmarkManager extends Component implements HasForms, HasActions
         return view('page-bookmarks::livewire.bookmark-manager');
     }
 
-    public function save(): void
+    public function addBookmarkAction(): Action
     {
-        /** @var array<string, mixed> $data */
-        $data = $this->form->getState();
+        return Action::make('add-bookmark')
+            ->modalHeading(__('page-bookmarks::translation.add_bookmark'))
+            ->slideOver(config('page-bookmarks.modal.add_bookmark') === 'slideOver')
+            ->model(Bookmark::class)
+            ->modalWidth(Width::Small)
+            ->fillForm(fn (array $arguments): array => [
+                'name' => $arguments['name'],
+                'url' => $arguments['url'],
+            ])
+            ->schema([
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
 
-        $user = auth()->user();
+                Select::make('bookmark_folder_id')
+                    ->label(__('page-bookmarks::translation.folder'))
+                    ->options(BookmarkFolder::whereBelongsTo(auth()->user())->pluck('name', 'id'))
+                    ->createOptionForm([
+                        TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                    ])
+                    ->createOptionUsing(function (array $data) {
+                        return auth()->user()?->bookmarkFolders()
+                            ->create($data)
+                            ->getKey();
+                    })
+                    ->createOptionAction(
+                        fn (Action $action) => $action
+                            ->modalWidth(Width::Small)
+                            ->after(fn() => $this->dispatch('refreshBookmarks')),
+                    )
+                    ->nullable(),
 
-        if ($user === null) {
-            return;
-        }
+                TextInput::make('url')
+                    ->label('URL')
+                    ->disabled()
+                    ->dehydrated(),
+            ])
+            ->modalSubmitActionLabel(__('page-bookmarks::translation.add'))
+            ->action(function (array $data, Action $action) {
+                if (($user = auth()->user()) === null) {
+                    return;
+                }
 
-        // Extract and sanitize input values
-        $name = isset($data['name']) && is_string($data['name']) ? $data['name'] : '';
-        $url = isset($data['url']) && is_string($data['url']) ? $data['url'] : request()->url();
-        $bookmarkFolderId = isset($data['bookmark_folder_id']) && is_numeric($data['bookmark_folder_id'])
-            ? (int) $data['bookmark_folder_id']
-            : null;
+                $name = Arr::get($data, 'name', '');
+                $url = Arr::get($data, 'url') ?? request()->url();
 
-        // Check for existing bookmarks with the same name or URL for this user
-        $existingBookmark = Bookmark::query()->where('user_id', $user->id)
-            ->where(function ($query) use ($name, $url): void {
-                $query->where('name', $name)
-                    ->orWhere('url', $url);
+                $bookmarkFolderId = Arr::get($data, 'bookmark_folder_id');
+
+                // Check for existing bookmarks with the same name or URL for this user
+                $existingBookmark = Bookmark::whereBelongsTo($user)
+                    ->where(function ($query) use ($name, $url): void {
+                        $query->where('name', $name)
+                            ->orWhere('url', $url);
+                    })
+                    ->first();
+
+                if (! is_null($existingBookmark)) {
+                    // Determine if it's a duplicate name, URL, or both
+                    if ($existingBookmark->name === $name && $existingBookmark->url === $url) {
+                        $duplicateField = __('page-bookmarks::translation.bookmark_with_this_name_and_url');
+                    } elseif ($existingBookmark->name === $name) {
+                        $duplicateField = __('page-bookmarks::translation.bookmark_with_this_name');
+                    } else {
+                        $duplicateField = __('page-bookmarks::translation.bookmark_for_this_url');
+                    }
+
+                    Notification::make()
+                        ->title(__('page-bookmarks::translation.you_already_have_a_duplicate', [
+                            'duplicate' => $duplicateField,
+                        ]))
+                        ->warning()
+                        ->send();
+
+                    $action->halt();
+                }
+
+                // Create and save the new bookmark
+                $bookmark = new Bookmark;
+                $bookmark->fill([
+                    'user_id' => $user->id,
+                    'name' => $name,
+                    'url' => $url,
+                    'bookmark_folder_id' => $bookmarkFolderId,
+                ])->save();
+
+                $bookmark->save();
+
+                $this->dispatch('refreshBookmarks');
             })
-            ->first();
-
-        if ($existingBookmark) {
-            // Determine if it's a duplicate name, URL, or both
-            $duplicateField = '';
-            if ($existingBookmark->name === $name && $existingBookmark->url === $url) {
-                $duplicateField = __('page-bookmarks::translation.bookmark_with_this_name_and_url');
-            } elseif ($existingBookmark->name === $name) {
-                $duplicateField = __('page-bookmarks::translation.bookmark_with_this_name');
-            } else {
-                $duplicateField = __('page-bookmarks::translation.bookmark_for_this_url');
-            }
-
-            Notification::make()
-                ->title(__('page-bookmarks::translation.you_already_have_a_duplicate', ['duplicate' => $duplicateField]))
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        // Create and save the new bookmark
-        $bookmark = new Bookmark;
-        $bookmark->user_id = $user->id;
-        $bookmark->name = $name;
-        $bookmark->url = $url;
-        $bookmark->bookmark_folder_id = $bookmarkFolderId;
-        $bookmark->save();
-
-        $this->form->fill([
-            'url' => request()->url(),
-        ]);
-
-        $this->dispatch('close-modal', id: 'bookmark-form-modal');
-        $this->dispatch('refreshBookmarks');
-
-        Notification::make()
-            ->title(__('page-bookmarks::translation.bookmark_saved_successfully'))
-            ->success()
-            ->send();
+            ->successNotificationTitle(__('page-bookmarks::translation.bookmark_added_successfully'));
     }
 }
