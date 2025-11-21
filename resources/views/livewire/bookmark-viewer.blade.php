@@ -35,14 +35,14 @@
                             // First check all bookmark items
                             bookmarkItems.forEach(item => {
                                 const name = item.getAttribute('data-bookmark-name').toLowerCase();
-                                const folder = item.getAttribute('data-bookmark-folder');
+                                const folder = JSON.parse(item.getAttribute('data-bookmark-folder'));
 
                                 const isVisible = name.includes(searchTerm);
                                 item.style.display = isVisible ? 'flex' : 'none';
 
                                 // Count visible items
                                 if (isVisible) {
-                                    folderVisibleCount[folder] = (folderVisibleCount[folder] || 0) + 1;
+                                    folderVisibleCount[folder.name] = (folderVisibleCount[folder.name] || 0) + 1;
                                 }
                             });
 
