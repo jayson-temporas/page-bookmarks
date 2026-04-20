@@ -8,16 +8,26 @@
             const h1 = document.querySelector('h1');
             const pageTitle = h1 ? h1.textContent.trim() : document.title;
 
-            // Dispatch event to Livewire to set the title
+            // Capture the full browser URL (including query parameters like Filament table filters)
+            const currentUrl = window.location.href;
+
+            // Dispatch events to Livewire to set the title and current URL
             $wire.setBookmarkName(pageTitle);
+            $wire.set('data.url', currentUrl);
+            $wire.set('data.display_url', currentUrl);
         })"
         x-on:keydown.meta.shift.b.prevent.document="$dispatch('open-modal', { id: 'bookmark-form-modal' }); $nextTick(() => {
             // Try to get the title from h1 tag
             const h1 = document.querySelector('h1');
             const pageTitle = h1 ? h1.textContent.trim() : document.title;
 
-            // Dispatch event to Livewire to set the title
+            // Capture the full browser URL (including query parameters like Filament table filters)
+            const currentUrl = window.location.href;
+
+            // Dispatch events to Livewire to set the title and current URL
             $wire.setBookmarkName(pageTitle);
+            $wire.set('data.url', currentUrl);
+            $wire.set('data.display_url', currentUrl);
         })"
     />
 
