@@ -9,13 +9,13 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Jaysontemporas\\PageBookmarks\\": "src/"
+            "JaysonTemporas\\PageBookmarks\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Jaysontemporas\\PageBookmarks\\PageBookmarksServiceProvider"
+                "JaysonTemporas\\PageBookmarks\\PageBookmarksServiceProvider"
             ]
         }
     },
